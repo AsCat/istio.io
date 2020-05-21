@@ -1,7 +1,7 @@
 ---
 title: Remotely Accessing Telemetry Addons
 description: This task shows you how to configure external access to the set of Istio telemetry addons.
-weight: 99
+weight: 98
 keywords: [telemetry,gateway,jaeger,zipkin,tracing,kiali,prometheus,addons]
 aliases:
  - /docs/tasks/telemetry/gateways/
@@ -23,7 +23,7 @@ A server certificate is required for secure access. Follow these steps to instal
 server certificates for a domain that you control.
 
 You may use self-signed certificates instead. Visit our
-[Securing Gateways with HTTPS Using Secret Discovery Service task](/docs/tasks/traffic-management/ingress/secure-ingress-sds/)
+[Securing Gateways with HTTPS](/docs/tasks/traffic-management/ingress/secure-ingress/)
 for general information on using self-signed certificates to access in-cluster services.
 
 {{< warning >}}
@@ -31,23 +31,16 @@ This option covers securing the transport layer *only*. You should also configur
 addons to require authentication when exposing them externally.
 {{< /warning >}}
 
-1. [Install cert-manager](https://docs.cert-manager.io/en/latest/getting-started/install/kubernetes.html) to manage certificates automatically.
+1. [Install cert-manager](/docs/ops/integrations/certmanager/) to manage certificates automatically.
 
-1. [Install Istio](/docs/setup) in your cluster and enable the `cert-manager` flag and configure `istio-ingressgateway` to use
-the [Secret Discovery Service](https://www.envoyproxy.io/docs/envoy/latest/configuration/security/secret#sds-configuration).
+1. [Install Istio](/docs/setup/install/istioctl) in your cluster.
 
-    To install Istio accordingly, use the following Helm installation options:
+    To additionally install the telemetry addons, use the following installation options:
 
-    * `--set gateways.enabled=true`
-    * `--set gateways.istio-ingressgateway.enabled=true`
-    * `--set gateways.istio-ingressgateway.sds.enabled=true`
-
-    To additionally install the telemetry addons, use the following Helm installation options:
-
-    * Grafana: `--set grafana.enabled=true`
-    * Kiali: `--set kiali.enabled=true`
-    * Prometheus: `--set prometheus.enabled=true`
-    * Tracing: `--set tracing.enabled=true`
+    * Grafana: `--set values.grafana.enabled=true`
+    * Kiali: `--set values.kiali.enabled=true`
+    * Prometheus: `--set values.prometheus.enabled=true`
+    * Tracing: `--set values.tracing.enabled=true`
 
 1. Configure the DNS records for your domain.
 
@@ -84,7 +77,7 @@ the [Secret Discovery Service](https://www.envoyproxy.io/docs/envoy/latest/confi
 
     {{< text bash >}}
     $ cat <<EOF | kubectl apply -f -
-    apiVersion: certmanager.k8s.io/v1alpha1
+    apiVersion: cert-manager.io/v1alpha2
     kind: Certificate
     metadata:
       name: telemetry-gw-cert
@@ -105,13 +98,13 @@ the [Secret Discovery Service](https://www.envoyproxy.io/docs/envoy/latest/confi
           - $TELEMETRY_DOMAIN
     ---
     EOF
-    certificate.certmanager.k8s.io "telemetry-gw-cert" created
+    certificate.cert-manager.io "telemetry-gw-cert" created
     {{< /text >}}
 
 1. Wait until the server certificate is ready.
 
     {{< text syntax="bash" expandlinks="false" >}}
-    $ JSONPATH='{range .items[*]}{@.metadata.name}:{range @.status.conditions[*]}{@.type}={@.status}{end}{end}' && kubectl -n istio-system get certificates -o jsonpath="$JSONPATH"
+    $ JSONPATH='{range .items[*]}{@.metadata.name}:{range @.status.conditions[*]}{@.type}={@.status}{end}{end}' && kubectl -n istio-system get certificates.cert-manager.io -o jsonpath="$JSONPATH"
     telemetry-gw-cert:Ready=True
     {{< /text >}}
 
@@ -370,14 +363,14 @@ the [Secret Discovery Service](https://www.envoyproxy.io/docs/envoy/latest/confi
 
 ### Option 2: Insecure access (HTTP)
 
-1. [Install Istio](/docs/setup/) in your cluster with your desired telemetry addons.
+1. [Install Istio](/docs/setup/install/istioctl) in your cluster with your desired telemetry addons.
 
-    To additionally install the telemetry addons, use the following Helm installation options:
+    To additionally install the telemetry addons, use the following installation options:
 
-    * Grafana: `--set grafana.enabled=true`
-    * Kiali: `--set kiali.enabled=true`
-    * Prometheus: `--set prometheus.enabled=true`
-    * Tracing: `--set tracing.enabled=true`
+    * Grafana: `--set values.grafana.enabled=true`
+    * Kiali: `--set values.kiali.enabled=true`
+    * Prometheus: `--set values.prometheus.enabled=true`
+    * Tracing: `--set values.tracing.enabled=true`
 
 1. Apply networking configuration for the telemetry addons.
 
@@ -637,6 +630,6 @@ the [Secret Discovery Service](https://www.envoyproxy.io/docs/envoy/latest/confi
 * If installed, remove the gateway certificate:
 
     {{< text bash >}}
-    $ kubectl -n istio-system delete certificate telemetry-gw-cert
-    certificate.certmanager.k8s.io "telemetry-gw-cert" deleted
+    $ kubectl -n istio-system delete certificates.cert-manager.io telemetry-gw-cert
+    certificate.cert-manager.io "telemetry-gw-cert" deleted
     {{< /text >}}

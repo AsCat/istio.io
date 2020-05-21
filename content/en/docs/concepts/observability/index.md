@@ -19,7 +19,7 @@ Istio, operators gain a thorough understanding of how monitored services are int
 Istio generates the following types of telemetry in order to provide overall service mesh observability:
 
 - [**Metrics**](#metrics). Istio generates a set of service metrics based on the four "golden signals" of monitoring (latency, traffic, errors, and
-  saturation). Istio also provides detailed metrics for the [mesh control plane](/docs/concepts/architecture/).
+  saturation). Istio also provides detailed metrics for the [mesh control plane](/docs/ops/deployment/architecture/).
   A default set of mesh monitoring dashboards built on top of these metrics is also provided.
 - [**Distributed Traces**](#distributed-traces). Istio generates distributed trace spans for each service, providing operators with a detailed understanding
   of call flows and service dependencies within a mesh.
@@ -37,10 +37,7 @@ behaviors such as the overall volume of traffic, the error rates within the traf
 In addition to monitoring the behavior of services within a mesh, it is also important to monitor the behavior of the mesh itself. Istio components export
 metrics on their own internal behaviors to provide insight on the health and function of the mesh control plane.
 
-Istio metrics collection is driven by operator configuration. Operators select how and when to collect metrics, as well as how detailed the metrics themselves
-should be. This enables operators to flexibly tune metrics collection to meet their individual needs.
-
-### Proxy-level Metrics
+### Proxy-level metrics
 
 Istio metrics collection begins with the sidecar proxies (Envoy). Each proxy generates a rich set of metrics about all traffic passing through the proxy (both
 inbound and outbound). The proxies also provide detailed statistics about the administrative functions of the proxy itself, including configuration and health
@@ -71,17 +68,14 @@ envoy_cluster_lb_subsets_removed{cluster_name="xds-grpc"} 0
 envoy_cluster_internal_upstream_rq{response_code="503",cluster_name="xds-grpc"} 1
 {{< /text >}}
 
-### Service-level Metrics
+### Service-level metrics
 
 In addition to the proxy-level metrics, Istio provides a set of service-oriented metrics for monitoring service communications. These metrics cover the four
 basic service monitoring needs: latency, traffic, errors, and saturation. Istio ships with a default set of
 [dashboards](/docs/tasks/observability/metrics/using-istio-dashboard/) for monitoring service behaviors based on these metrics.
 
-The [default Istio metrics](/docs/reference/config/policy-and-telemetry/metrics/) are defined by a set of configuration artifacts that ship with Istio and are
-exported to [Prometheus](/docs/reference/config/policy-and-telemetry/adapters/prometheus/) by default. Operators are free to modify the
-shape and content of these metrics, as well as to change their collection mechanism, to meet their individual monitoring needs.
-
-The [Collecting Metrics](/docs/tasks/observability/metrics/collecting-metrics/) task provides more information on customizing Istio metrics generation.
+The [standard Istio metrics](/docs/reference/config/policy-and-telemetry/metrics/) are
+exported to [Prometheus](/docs/reference/config/policy-and-telemetry/adapters/prometheus/) by default.
 
 Use of the service-level metrics is entirely optional. Operators may choose to turn off generation and collection of these metrics to meet their individual
 needs.
@@ -92,6 +86,8 @@ Example service-level metric:
 istio_requests_total{
   connection_security_policy="mutual_tls",
   destination_app="details",
+  destination_canonical_service="details",
+  destination_canonical_revision="v1",
   destination_principal="cluster.local/ns/default/sa/default",
   destination_service="details.default.svc.cluster.local",
   destination_service_name="details",
@@ -104,6 +100,8 @@ istio_requests_total{
   response_code="200",
   response_flags="-",
   source_app="productpage",
+  source_canonical_service="productpage",
+  source_canonical_revision="v1",
   source_principal="cluster.local/ns/default/sa/default",
   source_version="v1",
   source_workload="productpage-v1",
@@ -111,7 +109,7 @@ istio_requests_total{
 } 214
 {{< /text >}}
 
-### Control Plane Metrics
+### Control plane metrics
 
 Each Istio component (Pilot, Galley, Mixer) also provides a collection of self-monitoring metrics. These metrics allow monitoring of the behavior
 of Istio itself (as distinct from that of the services within the mesh).
@@ -121,9 +119,8 @@ For more information on which metrics are maintained, please refer to the refere
 - [Pilot](/docs/reference/commands/pilot-discovery/#metrics)
 - [Galley](/docs/reference/commands/galley/#metrics)
 - [Mixer](/docs/reference/commands/mixs/#metrics)
-- [Citadel](/docs/reference/commands/istio_ca/#metrics)
 
-## Distributed Traces
+## Distributed traces
 
 Distributed tracing provides a way to monitor and understand behavior by monitoring individual requests as they flow through a mesh.
 Traces empower mesh operators to understand service dependencies and the sources of latency within their service mesh.
@@ -142,16 +139,12 @@ Example Istio-generated distributed trace for a single request:
 
 {{< image link="/docs/tasks/observability/distributed-tracing/zipkin/istio-tracing-details-zipkin.png" caption="Distributed Trace for a single request" >}}
 
-## Access Logs
+## Access logs
 
 Access logs provide a way to monitor and understand behavior from the perspective of an individual workload instance.
 
 Istio can generate access logs for service traffic in a configurable set of formats, providing operators with full control of the how, what, when and where of
 logging. Istio exposes a full set of source and destination metadata to the access logging mechanisms, allowing detailed audit of network transactions.
-
-Access logs may be generated locally or exported to custom backends, including [Fluentd](/docs/tasks/observability/logs/fluentd/).
-
-More information on access logging is provided in the [Collecting Logs](/docs/tasks/observability/logs/collecting-logs/) and the [Getting Envoy's Access Logs](/docs/tasks/observability/logs/access-log/) tasks.
 
 Example Istio access log (formatted in JSON):
 

@@ -1,197 +1,169 @@
 ---
-title: Upgrade
-description: Upgrade the Istio control plane and data plane independently.
+title: Upgrade Istio
+description: Upgrade or downgrade Istio.
 weight: 25
-aliases:
-    - /docs/setup/kubernetes/upgrade/steps/
-    - /docs/setup/upgrade/steps
 keywords: [kubernetes,upgrading]
 ---
 
-Follow this flow to upgrade an existing Istio deployment, including both the
-control plane and the sidecar proxies, to a new release of Istio. The upgrade
-process may install new binaries and may change configuration and API schemas.
-The upgrade process may result in service downtime. To minimize downtime,
-please ensure your Istio control plane components and your applications are
-highly available with multiple replicas.
+## Canary upgrades
+
+Upgrading Istio can be done by first running a canary deployment of the new control plane, allowing you
+to monitor the effect of the upgrade with a small percentage of the workloads, before migrating all of the
+traffic to the new version. This is much safer than doing an in place upgrade and is the recommended upgrade method.
+
+When installing Istio, the `revision` installation setting can be used to deploy multiple independent control planes at the same time. A canary version of an upgrade can be started by installing the new Istio version's control plane next to the old one, using a different `revision` setting. Each revision is a full Istio control plane implementation with its own `Deployment`, `Service`, etc.
+
+### Control plane
+
+To install a new revision called `canary`, you would set the `revision` field as follows:
+
+{{< text bash >}}
+$ istioctl install --set revision=canary
+{{< /text >}}
+
+After running the command, you will have two control plane deployments running side-by-side:
+
+{{< text bash >}}
+$ kubectl get pods -n istio-system
+NAME                                    READY   STATUS    RESTARTS   AGE
+istiod-786779888b-p9s5n                 1/1     Running   0          114m
+istiod-canary-6956db645c-vwhsk          1/1     Running   0          1m
+{{< /text >}}
+
+### Data plane
+
+Simply installing the new revision has no impact on the existing proxies. To upgrade these,
+you must configure them to point to the new control plane. This is controlled during sidecar injection
+based on the namespace label `istio.io/rev`.
+
+To upgrade the namespace `test-ns`, relabel it to point to the canary revision:
+
+{{< text bash >}}
+$ kubectl label namespace default istio-injection- istio.io/rev=canary
+{{< /text >}}
+
+Note that the above command is also removing the `istio-injection` label because otherwise
+it would take precedence over the `istio.io/rev` label (for backward compatibility).
+
+After the namespace updates, you need to restart the pods to trigger re-injection. One way to do
+this is using:
+
+{{< text bash >}}
+$ kubectl rollout restart deployment -n test-ns
+{{< /text >}}
+
+When the pods are re-injected, they will be configured to point to the `istiod-canary` control plane. You can verify this by looking at the pod labels.
+
+For example, the following command will show all the pods using the `canary` revision:
+
+{{< text bash >}}
+$ kubectl get pods -n test-ns -l istio.io/rev=canary
+{{< /text >}}
+
+## In place upgrades
+
+The `istioctl upgrade` command performs an upgrade of Istio. Before performing
+the upgrade, it checks that the Istio installation meets the upgrade eligibility
+criteria. Also, it alerts the user if it detects any changes in the profile
+default values between Istio versions.
+
+The upgrade command can also perform a downgrade of Istio.
+
+See the [`istioctl` upgrade reference](/docs/reference/commands/istioctl/#istioctl-upgrade)
+for all the options provided by the `istioctl upgrade` command.
+
+### Upgrade prerequisites
+
+Ensure you meet these requirements before starting the upgrade process:
+
+* Istio version 1.4.4 or higher is installed.
+
+* Your Istio installation was [installed using {{< istioctl >}}](/docs/setup/install/istioctl/).
+
+### Upgrade steps
 
 {{< warning >}}
-Be sure to check out the [upgrade notes](/news/{{< istio_full_version_release_year >}}/announcing-{{< istio_version >}}/upgrade-notes)
-for a concise list of things you should know before upgrading your deployment to Istio {{< istio_version >}}.
+Traffic disruption may occur during the upgrade process. To minimize the disruption, ensure
+that at least two replicas of each component (except Citadel) are running. Also, ensure that
+[`PodDistruptionBudgets`](https://kubernetes.io/docs/tasks/run-application/configure-pdb/)
+are configured with a minimum availability of 1.
 {{< /warning >}}
 
-{{< tip >}}
-Istio does **NOT** support skip level upgrades. Only upgrades from {{< istio_previous_version >}} to {{< istio_version >}}
-are supported. If you are on an older version, please upgrade to {{< istio_previous_version >}} first.
-{{< /tip >}}
+The commands in this section should be run using the new version of `istioctl` which
+can be found in the `bin/` subdirectory of the downloaded package.
 
-## Upgrade steps
+1. [Download the new Istio release](/docs/setup/getting-started/#download)
+   and change directory to the new release directory.
 
-[Download the new Istio release](/docs/setup/#downloading-the-release)
-and change directory to the new release directory.
-
-### Istio CNI upgrade
-
-If you have installed or are planning to install [Istio CNI](/docs/setup/additional-setup/cni/),
-choose one of the following **mutually exclusive** options to check whether
-Istio CNI is already installed and to upgrade it:
-
-{{< tabset cookie-name="controlplaneupdate" >}}
-{{< tab name="Kubernetes rolling update" cookie-value="k8supdate" >}}
-
-You can use Kubernetes’ rolling update mechanism to upgrade the Istio CNI components.
-This is suitable for cases where `kubectl apply` was used to deploy Istio CNI.
-
-1. To check whether `istio-cni` is installed, search for `istio-cni-node` pods
-   and in which namespace they are running (typically, `kube-system` or `istio-system`):
+1. Verify that `istoctl` supports upgrading from your current Istio version by
+   viewing the supported versions list:
 
     {{< text bash >}}
-    $ kubectl get pods -l k8s-app=istio-cni-node --all-namespaces
-    $ NAMESPACE=$(kubectl get pods -l k8s-app=istio-cni-node --all-namespaces --output='jsonpath={.items[0].metadata.namespace}')
+    $ istioctl manifest versions
     {{< /text >}}
 
-1. If `istio-cni` is currently installed in a namespace other than `kube-system`
-   (for example, `istio-system`), delete `istio-cni`:
+1. Ensure that your Kubernetes configuration points to the cluster to upgrade:
 
     {{< text bash >}}
-    $ helm template install/kubernetes/helm/istio-cni --name=istio-cni --namespace=$NAMESPACE | kubectl delete -f -
+    $ kubectl config view
     {{< /text >}}
 
-1. Install or upgrade `istio-cni` in the `kube-system` namespace:
+1. Begin the upgrade by running this command:
 
     {{< text bash >}}
-    $ helm template install/kubernetes/helm/istio-cni --name=istio-cni --namespace=kube-system | kubectl apply -f -
+    $ istioctl upgrade -f `<your-custom-configuration-file>`
     {{< /text >}}
 
-{{< /tab >}}
+    `<your-custom-configuration-file>` is the
+    [IstioOperator API Configuration](/docs/setup/install/istioctl/#configure-component-settings)
+    file you used to customize the installation of the currently-running version of Istio.
 
-{{< tab name="Helm upgrade" cookie-value="helmupgrade" >}}
+    {{< warning >}}
+    If you installed Istio using the `-f` flag, for example
+    `istioctl manifest apply -f <IstioControlPlane-custom-resource-definition-file>`,
+    then you must provide the same `-f` flag value to the `istioctl upgrade` command.
+    {{< /warning >}}
 
-If you installed Istio CNI using [Helm and Tiller](/docs/setup/install/helm/#option-2-install-with-helm-and-tiller-via-helm-install),
-the preferred upgrade option is to let Helm take care of the upgrade.
+    `istioctl upgrade` does not support the `--set` flag. Therefore, if you
+    installed Istio using the `--set` command, create a configuration file with
+    the equivalent configuration options and pass it to the `istioctl upgrade`
+    command using the `-f` flag instead.
 
-1. Check whether `istio-cni` is installed, and in which namespace:
+    If you omit the `-f` flag, Istio upgrades using the default profile.
+
+    After performing several checks, `istioctl` will ask you to confirm whether to proceed.
+
+1. `istioctl` will install the new version of Istio control plane and indicate the
+   completion status.
+
+1. After `istioctl` completes the upgrade, you must manually update the Istio data plane
+   by restarting any pods with Istio sidecars:
 
     {{< text bash >}}
-    $ helm status istio-cni
+    $ kubectl rollout restart deployment
     {{< /text >}}
 
-1. (Re-)install or upgrade `istio-cni` depending on the status:
+### Downgrade prerequisites
 
-    * If `istio-cni` is not currently installed and you decide to install it:
+Ensure you meet these requirements before starting the downgrade process:
 
-        {{< text bash >}}
-        $ helm install install/kubernetes/helm/istio-cni --name istio-cni --namespace kube-system
-        {{< /text >}}
+* Istio version 1.5 or higher is installed.
 
-    * If `istio-cni` is currently installed in a namespace other than `kube-system`
-      (for example, `istio-system`), delete it:
+* Your Istio installation was [installed using {{< istioctl >}}](/docs/setup/install/istioctl/).
 
-        {{< text bash >}}
-        $ helm delete --purge istio-cni
-        {{< /text >}}
+* Downgrade must be done using the `istioctl` binary version that
+corresponds to the Istio version that you intend to downgrade to.
+For example, if you are downgrading from Istio 1.5 to 1.4.4, use `istioctl`
+version 1.4.4.
 
-        Then install it again in the `kube-system` namespace:
+### Downgrade to Istio 1.4.4 and lower versions steps
 
-        {{< text bash >}}
-        $ helm install install/kubernetes/helm/istio-cni --name istio-cni --namespace kube-system
-        {{< /text >}}
+You can use `istioctl experimental upgrade` to downgrade to 1.4 versions. Please
+notice that you need to use the `istioctl` binary corresponding to the lower
+version (e.g., 1.4.4), and `upgrade` is experimental in 1.4. The process steps are
+identical to the upgrade process mentioned in the previous section. When completed,
+the process will restore Istio back to the Istio version that was installed before.
 
-    * If `istio-cni` is currently installed in the `kube-system` namespace, upgrade it:
-
-        {{< text bash >}}
-        $ helm upgrade istio-cni install/kubernetes/helm/istio-cni --namespace kube-system
-        {{< /text >}}
-
-{{< /tab >}}
-{{< /tabset >}}
-
-### Control plane upgrade
-
-Pilot, Galley, Policy, Telemetry and Sidecar injector.
-Choose one of the following **mutually exclusive** options
-to update the control plane:
-
-{{< tabset cookie-name="controlplaneupdate" >}}
-{{< tab name="Kubernetes rolling update" cookie-value="k8supdate" >}}
-You can use Kubernetes’ rolling update mechanism to upgrade the control plane components.
-This is suitable for cases where `kubectl apply` was used to deploy the Istio components,
-including configurations generated using
-[helm template](/docs/setup/install/helm/#option-1-install-with-helm-via-helm-template).
-
-1. Use `kubectl apply` to upgrade all of Istio's CRDs.  Wait a few seconds for the Kubernetes
-   API server to commit the upgraded CRDs:
-
-    {{< text bash >}}
-    $ kubectl apply -f install/kubernetes/helm/istio-init/files/
-    {{< /text >}}
-
-1. {{< boilerplate verify-crds >}}
-
-1. Apply the update templates:
-
-    {{< text bash >}}
-    $ helm template install/kubernetes/helm/istio --name istio \
-      --namespace istio-system | kubectl apply -f -
-    {{< /text >}}
-
-    You must pass the same settings as when you first [installed Istio](/docs/setup/install/helm).
-
-The rolling update process will upgrade all deployments and configmaps to the new version.
-After this process finishes, your Istio control plane should be updated to the new version.
-Your existing application should continue to work without any change. If there is any
-critical issue with the new control plane, you can rollback the changes by applying the
-yaml files from the old version.
-{{< /tab >}}
-
-{{< tab name="Helm upgrade" cookie-value="helmupgrade" >}}
-If you installed Istio using [Helm and Tiller](/docs/setup/install/helm/#option-2-install-with-helm-and-tiller-via-helm-install),
-the preferred upgrade option is to let Helm take care of the upgrade.
-
-1. Upgrade the `istio-init` chart to update all the Istio [Custom Resource Definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#customresourcedefinitions) (CRDs).
-
-    {{< text bash >}}
-    $ helm upgrade --install istio-init install/kubernetes/helm/istio-init --namespace istio-system
-    {{< /text >}}
-
-1. {{< boilerplate verify-crds >}}
-
-1. Upgrade the `istio` chart:
-
-    {{< text bash >}}
-    $ helm upgrade istio install/kubernetes/helm/istio --namespace istio-system
-    {{< /text >}}
-
-    If Istio CNI is installed, enable it by adding the `--set istio_cni.enabled=true` setting.
-
-{{< /tab >}}
-{{< /tabset >}}
-
-### Sidecar upgrade
-
-After the control plane upgrade, the applications already running Istio will
-still be using an older sidecar. To upgrade the sidecar, you will need to re-inject it.
-
-If you're using automatic sidecar injection, you can upgrade the sidecar
-by doing a rolling update for all the pods, so that the new version of the
-sidecar will be automatically re-injected.
-
-{{< text bash >}}
-$ kubectl rollout restart deployment --namespace default
-{{< /text >}}
-
-If you're using manual injection, you can upgrade the sidecar by executing:
-
-{{< text bash >}}
-$ kubectl apply -f <(istioctl kube-inject -f $ORIGINAL_DEPLOYMENT_YAML)
-{{< /text >}}
-
-If the sidecar was previously injected with some customized inject configuration
-files, you will need to change the version tag in the configuration files to the new
-version and re-inject the sidecar as follows:
-
-{{< text bash >}}
-$ kubectl apply -f <(istioctl kube-inject \
-     --injectConfigFile inject-config.yaml \
-     --filename $ORIGINAL_DEPLOYMENT_YAML)
-{{< /text >}}
+`istioctl manifest apply` also installs the same Istio control plane, but does not
+perform any checks. For example, default values applied to the cluster for a configuration
+profile may change without warning.

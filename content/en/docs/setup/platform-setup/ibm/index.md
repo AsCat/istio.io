@@ -1,7 +1,7 @@
 ---
 title: IBM Cloud
 description: Instructions to setup an IBM Cloud cluster for Istio.
-weight: 18
+weight: 25
 skip_seealso: true
 aliases:
     - /docs/setup/kubernetes/prepare/platform-setup/ibm/
@@ -12,7 +12,7 @@ keywords: [platform-setup,ibm,iks]
 Follow these instructions to prepare a cluster for Istio using the
 [IBM Cloud Kubernetes Service](https://cloud.ibm.com/docs/containers?topic=containers-getting-started).
 To install Istio on IBM Cloud Private, refer to
-[Istio on IBM Cloud Private](https://www.ibm.com/support/knowledgecenter/en/SSBS6K_3.1.2/manage_cluster/istio.html)
+[Istio on IBM Cloud Private](https://www.ibm.com/support/knowledgecenter/en/SSBS6K_3.2.1/manage_cluster/istio.html)
 instead.
 
 {{< tip >}}
@@ -37,12 +37,12 @@ To prepare a cluster before manually installing Istio, proceed as follows:
     {{< /tip >}}
 
     {{< text bash >}}
-    $ ibmcloud ks cluster-create --zone <zone-name> --machine-type b3c.4x16 \
+    $ ibmcloud ks cluster create classic --zone <zone-name> --machine-type b3c.4x16 \
       --workers 3 --name <cluster-name>
     {{< /text >}}
 
     {{< tip >}}
-    If you already have a private and a public VLAN, you can specify them in the above command
+    If you already have a private or a public VLAN, you must specify them in the above command
     using the `--private-vlan` and `--public-vlan` options. Otherwise, they will be automatically created for you.
     You can view your available VLANs by running `ibmcloud ks vlans --zone <zone-name>`.
     {{< /tip >}}
@@ -51,7 +51,7 @@ To prepare a cluster before manually installing Istio, proceed as follows:
     set the `KUBECONFIG` environment variable as specified in the command output.
 
     {{< text bash >}}
-    $ ibmcloud ks cluster-config <cluster-name>
+    $ ibmcloud ks cluster config --cluster <cluster-name>
     {{< /text >}}
 
     {{< warning >}}

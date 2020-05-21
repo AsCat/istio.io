@@ -8,11 +8,7 @@ aliases:
     - /docs/tasks/ingress
 ---
 
-In a Kubernetes environment, the [Kubernetes Ingress Resource](https://kubernetes.io/docs/concepts/services-networking/ingress/)
-is used to specify services that should be exposed outside the cluster.
-In an Istio service mesh, a better approach (which also works in both Kubernetes and other environments) is to use a
-different configuration model, namely [Istio Gateway](/docs/reference/config/networking/gateway/).
-A `Gateway` allows Istio features such as monitoring and route rules to be applied to traffic entering the cluster.
+Along with support for Kubernetes [Ingress](/docs/tasks/traffic-management/ingress/kubernetes-ingress/), Istio offers another configuration model, [Istio Gateway](/docs/reference/config/networking/gateway/). A `Gateway` provides more extensive customization and flexibility than `Ingress`, and allows Istio features such as monitoring and route rules to be applied to traffic entering the cluster.
 
 This task describes how to configure Istio to expose a service outside of the service mesh using an Istio `Gateway`.
 
@@ -42,9 +38,9 @@ In this case, you can access the gateway using the service's [node port](https:/
 
 Choose the instructions corresponding to your environment:
 
-{{< tabset cookie-name="gateway-ip" >}}
+{{< tabset category-name="gateway-ip" >}}
 
-{{< tab name="external load balancer" cookie-value="external-lb" >}}
+{{< tab name="external load balancer" category-value="external-lb" >}}
 
 Follow these instructions if you have determined that your environment has an external load balancer.
 
@@ -70,7 +66,7 @@ $ export INGRESS_HOST=$(kubectl -n istio-system get service istio-ingressgateway
 
 {{< /tab >}}
 
-{{< tab name="node port" cookie-value="node-port" >}}
+{{< tab name="node port" category-value="node-port" >}}
 
 Follow these instructions if you have determined that your environment does not have an external load balancer,
 so you need to use a node port instead.
@@ -120,7 +116,7 @@ Setting the ingress IP depends on the cluster provider:
 
 {{< /tabset >}}
 
-## Configuring ingress using an Istio Gateway
+## Configuring ingress using an Istio gateway
 
 An ingress [Gateway](/docs/reference/config/networking/gateway/) describes a load balancer operating at the edge of the mesh that receives incoming HTTP/TCP connections.
 It configures exposed ports, protocols, etc.
@@ -190,7 +186,7 @@ Let's see how you can configure a `Gateway` on port 80 for HTTP traffic.
     Internal requests from other services in the mesh are not subject to these rules
     but instead will default to round-robin routing. To apply these rules to internal calls as well,
     you can add the special value `mesh` to the list of `gateways`. Since the internal hostname for the
-    service is probabaly different (e.g., `httpbin.default.svc.cluster.local`) from the external one,
+    service is probably different (e.g., `httpbin.default.svc.cluster.local`) from the external one,
     you will also need to add it to the `hosts` list. Refer to the
     [operations guide](/docs/ops/common-problems/network-issues#route-rules-have-no-effect-on-ingress-gateway-requests)
     for more details.

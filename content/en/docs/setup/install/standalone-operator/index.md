@@ -1,213 +1,196 @@
 ---
-title: Standalone Operator Quick Start Evaluation Install [Experimental]
-description: Instructions to install Istio in a Kubernetes cluster for evaluation.
-weight: 11
+title: Standalone Operator Install
+description: Instructions to install Istio in a Kubernetes cluster using the Istio operator.
+weight: 25
 keywords: [kubernetes, operator]
 aliases:
 ---
 
-This guide installs Istio using the standalone Istio operator. The only dependencies
-required are a supported Kubernetes cluster and the `kubectl` command. This
-installation method lets you quickly evaluate Istio in a Kubernetes cluster on
-any platform using a variety of profiles.
+This guide installs Istio using the standalone Istio
+[operator](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
+The only dependencies required are a supported Kubernetes cluster, the `kubectl` and the `istioctl` command at the release version.
 
-To install Istio for production use, we recommend using the [Helm Installation guide](/docs/setup/install/helm/)
-instead, which is a stable feature.
+To install Istio for production use, we recommend [installing with {{< istioctl >}}](/docs/setup/install/istioctl/)
+instead.
 
 ## Prerequisites
 
 1. Perform any necessary [platform-specific setup](/docs/setup/platform-setup/).
 
-1. Check the [Requirements for Pods and Services](/docs/setup/additional-setup/requirements/).
+1. Check the [Requirements for Pods and Services](/docs/ops/deployment/requirements/).
 
-## Installation steps
+1. Install the [{{< istioctl >}} command](/docs/ops/diagnostic-tools/istioctl/).
 
-1. Install Istio using the operator with the demo profile:
-
-    {{< text bash >}}
-    $ kubectl apply -f https://preliminary.istio.io/operator.yaml
-    {{< /text >}}
-
-{{< warning >}}
-This profile is only for demo usage and should not be used in production.
-{{< /warning >}}
-
-1. (Optionally) change profiles from the demo profile to one of the following profiles:
-
-{{< tabset cookie-name="profile" >}}
-
-{{< tab name="demo" cookie-value="permissive" >}}
-When using the [permissive mutual TLS mode](/docs/concepts/security/#permissive-mode), all services accept both plaintext and
-mutual TLS traffic. Clients send plaintext traffic unless configured for
-[mutual TLS migration](/docs/tasks/security/mtls-migration/). This profile is installed during the first step.
-
-Choose this profile for:
-
-* Clusters with existing applications, or
-* Applications where services with an Istio sidecar need to be able to
-  communicate with other non-Istio Kubernetes services
-
-Run the following command to switch to this profile:
-
-{{< text bash >}}
-$ kubectl apply -f https://preliminary.istio.io/operator-profile-demo.yaml
-{{< /text >}}
-
-{{< /tab >}}
-
-{{< tab name="demo-auth" cookie-value="strict" >}}
-This profile will enforce
-[mutual TLS authentication](/docs/concepts/security/#mutual-tls-authentication) between all clients and servers.
-
-Use this profile only on a fresh Kubernetes cluster where all workloads will be Istio-enabled.
-All newly deployed workloads will have Istio sidecars installed.
-
-Run the following command to switch to this profile:
-
-{{< text bash >}}
-$ kubectl apply -f https://preliminary.istio.io/operator-profile-demo-auth.yaml
-{{< /text >}}
-
-{{< /tab >}}
-
-{{< tab name="SDS" cookie-value="sds" >}}
-This profile enables
-[Secret Discovery Service](/docs/tasks/security/auth-sds) between all clients and servers.
-
-Use this profile to enhance startup performance of services in the Kubernetes cluster. Additionally
-improve security as Kubernetes secrets that contain known
-[risks](https://kubernetes.io/docs/concepts/configuration/secret/#risks) are not used.
-
-Run the following command to switch to this profile:
-
-{{< text bash >}}
-$ kubectl apply -f https://preliminary.istio.io/operator-profile-sds.yaml
-{{< /text >}}
-
-{{< /tab >}}
-
-{{< tab name="default" cookie-value="default" >}}
-This profile enables Istio's default settings which contains recommended
-production settings. Run the following command to switch to this profile:
-
-{{< text bash >}}
-$ kubectl apply -f https://preliminary.istio.io/operator-profile-default.yaml
-{{< /text >}}
-
-{{< /tab >}}
-
-{{< tab name="minimal" cookie-value="minimal" >}}
-This profile deploys a Istio's minimum components to function.
-
-Run the following command to switch to this profile:
-
-{{< text bash >}}
-$ kubectl apply -f https://preliminary.istio.io/operator-profile-minimal.yaml
-{{< /text >}}
-
-{{< /tab >}}
-
-{{< /tabset >}}
-
-## Verifying the installation
-
-{{< warning >}}
-This document is a work in progress. Expect verification steps for each of the profiles to
-vary from these verification steps. Inconsistencies will be resolved prior to the publishing of
-Istio 1.4. Until that time, these verification steps only apply to the `profile-istio-demo.yaml` profile.
-{{< /warning >}}
-
-1.  Ensure the following Kubernetes services are deployed and verify they all have an appropriate `CLUSTER-IP` except the `jaeger-agent` service:
+1. Deploy the Istio operator:
 
     {{< text bash >}}
-    $ kubectl get svc -n istio-system
-    NAME                     TYPE           CLUSTER-IP       EXTERNAL-IP     PORT(S)                                                                                                                                      AGE
-    grafana                  ClusterIP      172.21.211.123   <none>          3000/TCP                                                                                                                                     2m
-    istio-citadel            ClusterIP      172.21.177.222   <none>          8060/TCP,15014/TCP                                                                                                                           2m
-    istio-egressgateway      ClusterIP      172.21.113.24    <none>          80/TCP,443/TCP,15443/TCP                                                                                                                     2m
-    istio-galley             ClusterIP      172.21.132.247   <none>          443/TCP,15014/TCP,9901/TCP                                                                                                                   2m
-    istio-ingressgateway     LoadBalancer   172.21.144.254   52.116.22.242   15020:31831/TCP,80:31380/TCP,443:31390/TCP,31400:31400/TCP,15029:30318/TCP,15030:32645/TCP,15031:31933/TCP,15032:31188/TCP,15443:30838/TCP   2m
-    istio-pilot              ClusterIP      172.21.105.205   <none>          15010/TCP,15011/TCP,8080/TCP,15014/TCP                                                                                                       2m
-    istio-policy             ClusterIP      172.21.14.236    <none>          9091/TCP,15004/TCP,15014/TCP                                                                                                                 2m
-    istio-sidecar-injector   ClusterIP      172.21.155.47    <none>          443/TCP,15014/TCP                                                                                                                            2m
-    istio-telemetry          ClusterIP      172.21.196.79    <none>          9091/TCP,15004/TCP,15014/TCP,42422/TCP                                                                                                       2m
-    jaeger-agent             ClusterIP      None             <none>          5775/UDP,6831/UDP,6832/UDP                                                                                                                   2m
-    jaeger-collector         ClusterIP      172.21.135.51    <none>          14267/TCP,14268/TCP                                                                                                                          2m
-    jaeger-query             ClusterIP      172.21.26.187    <none>          16686/TCP                                                                                                                                    2m
-    kiali                    ClusterIP      172.21.155.201   <none>          20001/TCP                                                                                                                                    2m
-    prometheus               ClusterIP      172.21.63.159    <none>          9090/TCP                                                                                                                                     2m
-    tracing                  ClusterIP      172.21.2.245     <none>          80/TCP                                                                                                                                       2m
-    zipkin                   ClusterIP      172.21.182.245   <none>          9411/TCP                                                                                                                                     2m
+    $ istioctl operator init
     {{< /text >}}
+
+    This command runs the operator by creating the following resources in the `istio-operator` namespace:
+
+    - The operator custom resource definition
+    - The operator controller deployment
+    - A service to access operator metrics
+    - Necessary Istio operator RBAC rules
+
+    See the available `istioctl operator init` flags to control which namespaces the controller and Istio are installed
+    into and the installed Istio image sources and versions.
 
     {{< tip >}}
-    If your cluster is running in an environment that does not
-    support an external load balancer (e.g., minikube), the
-    `EXTERNAL-IP` of `istio-ingressgateway` will say
-    `<pending>`. To access the gateway, use the service's
-    `NodePort`, or use port-forwarding instead.
-    {{< /tip >}}
-
-1.  Ensure corresponding Kubernetes pods are deployed and have a `STATUS` of `Running`:
+    You can alternatively deploy the operator using Helm:
 
     {{< text bash >}}
-    $ kubectl get pods -n istio-system
-    NAME                                                           READY   STATUS      RESTARTS   AGE
-    grafana-f8467cc6-rbjlg                                         1/1     Running     0          1m
-    istio-citadel-78df5b548f-g5cpw                                 1/1     Running     0          1m
-    istio-cleanup-secrets-release-1.1-20190308-09-16-8s2mp         0/1     Completed   0          2m
-    istio-egressgateway-78569df5c4-zwtb5                           1/1     Running     0          1m
-    istio-galley-74d5f764fc-q7nrk                                  1/1     Running     0          1m
-    istio-grafana-post-install-release-1.1-20190308-09-16-2p7m5    0/1     Completed   0          2m
-    istio-ingressgateway-7ddcfd665c-dmtqz                          1/1     Running     0          1m
-    istio-pilot-f479bbf5c-qwr28                                    2/2     Running     0          1m
-    istio-policy-6fccc5c868-xhblv                                  2/2     Running     2          1m
-    istio-security-post-install-release-1.1-20190308-09-16-bmfs4   0/1     Completed   0          2m
-    istio-sidecar-injector-78499d85b8-x44m6                        1/1     Running     0          1m
-    istio-telemetry-78b96c6cb6-ldm9q                               2/2     Running     2          1m
-    istio-tracing-69b5f778b7-s2zvw                                 1/1     Running     0          1m
-    kiali-99f7467dc-6rvwp                                          1/1     Running     0          1m
-    prometheus-67cdb66cbb-9w2hm                                    1/1     Running     0          1m
+    $ helm template install/kubernetes/operator/operator-chart/ \
+      --set hub=docker.io/istio \
+      --set tag={{< istio_full_version >}} \
+      --set operatorNamespace=istio-operator \
+      --set istioNamespace=istio-system | kubectl apply -f -
     {{< /text >}}
 
-## Deploy your application
+    Note that you need to [download the Istio release](/docs/setup/getting-started/#download)
+    to run the above command.
+    {{< /tip >}}
 
-You can now deploy your own application or one of the sample applications
-provided with the installation like [Bookinfo](/docs/examples/bookinfo/).
+## Install
 
-{{< warning >}}
-The application must use either the HTTP/1.1 or HTTP/2.0 protocols for all its HTTP
-traffic; HTTP/1.0 is not supported.
-{{< /warning >}}
-
-When you deploy your application using `kubectl apply`,
-the [Istio sidecar injector](/docs/setup/additional-setup/sidecar-injection/#automatic-sidecar-injection)
-will automatically inject Envoy containers into your
-application pods if they are started in namespaces labeled with `istio-injection=enabled`:
+To install the Istio `demo` [configuration profile](/docs/setup/additional-setup/config-profiles/)
+using the operator, run the following command:
 
 {{< text bash >}}
-$ kubectl label namespace <namespace> istio-injection=enabled
-$ kubectl create -n <namespace> -f <your-app-spec>.yaml
+$ kubectl create ns istio-system
+$ kubectl apply -f - <<EOF
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  namespace: istio-system
+  name: example-istiocontrolplane
+spec:
+  profile: demo
+EOF
 {{< /text >}}
 
-In namespaces without the `istio-injection` label, you can use
-[`istioctl kube-inject`](/docs/reference/commands/istioctl/#istioctl-kube-inject)
-to manually inject Envoy containers in your application pods before deploying
-them:
+The controller will detect the `IstioOperator` resource and then install the Istio
+components corresponding to the specified (`demo`) configuration.
+
+{{< tip >}}
+The Istio operator controller begins the process of installing Istio within 90 seconds of
+the creation of the `IstioOperator` resource. The Istio installation completes within 120
+seconds.
+{{< /tip >}}
+
+You can confirm the Istio control plane services have been deployed with the following commands:
 
 {{< text bash >}}
-$ istioctl kube-inject -f <your-app-spec>.yaml | kubectl apply -f -
+$ kubectl get svc -n istio-system
+NAME                        TYPE           CLUSTER-IP      EXTERNAL-IP    PORT(S)                                                                                                                      AGE
+grafana                     ClusterIP      10.47.246.242   <none>         3000/TCP                                                                                                                     64m
+istio-egressgateway         ClusterIP      10.47.244.203   <none>         80/TCP,443/TCP,15443/TCP                                                                                                     64m
+istio-ingressgateway        LoadBalancer   10.47.247.221   34.69.50.226   15020:31649/TCP,80:30012/TCP,443:31723/TCP,15029:31857/TCP,15030:31621/TCP,15031:31290/TCP,15032:30334/TCP,15443:31754/TCP   64m
+istio-pilot                 ClusterIP      10.47.247.195   <none>         15010/TCP,15011/TCP,15012/TCP,8080/TCP,15014/TCP,443/TCP                                                                     64m
+istiod                      ClusterIP      10.47.247.6     <none>         15012/TCP,443/TCP                                                                                                            64m
+jaeger-agent                ClusterIP      None            <none>         5775/UDP,6831/UDP,6832/UDP                                                                                                   64m
+jaeger-collector            ClusterIP      10.47.244.102   <none>         14267/TCP,14268/TCP,14250/TCP                                                                                                64m
+jaeger-collector-headless   ClusterIP      None            <none>         14250/TCP                                                                                                                    64m
+jaeger-query                ClusterIP      10.47.253.168   <none>         16686/TCP                                                                                                                    64m
+kiali                       ClusterIP      10.47.246.119   <none>         20001/TCP                                                                                                                    64m
+prometheus                  ClusterIP      10.47.240.52    <none>         9090/TCP                                                                                                                     64m
+tracing                     ClusterIP      10.47.251.85    <none>         80/TCP                                                                                                                       64m
+zipkin                      ClusterIP      10.47.244.132   <none>         9411/TCP                                                                                                                     64m                                                                                                         2m
 {{< /text >}}
+
+{{< text bash >}}
+$ kubectl get pods -n istio-system
+NAME                                    READY   STATUS    RESTARTS   AGE
+grafana-78bc994d79-gwkfd                1/1     Running   0          63m
+istio-egressgateway-5fc6f84745-8f98z    1/1     Running   0          63m
+istio-ingressgateway-5b89fc6c98-vkwb5   1/1     Running   0          63m
+istio-tracing-c7b59f68f-dgqb8           1/1     Running   0          63m
+istiod-5448f74684-gmd5w                 1/1     Running   0          52m
+kiali-fb5f485fb-2l4r6                   1/1     Running   0          63m
+prometheus-7b8875c479-7zsnf             1/1     Running   0          63m
+{{< /text >}}
+
+## Update
+
+Now, with the controller running, you can change the Istio configuration by editing or replacing
+the `IstioOperator` resource. The controller will detect the change and respond by updating
+the Istio installation correspondingly.
+
+For example, you can switch the installation to the `default`
+profile with the following command:
+
+{{< text bash >}}
+$ kubectl apply -f - <<EOF
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  namespace: istio-system
+  name: example-istiocontrolplane
+spec:
+  profile: default
+EOF
+{{< /text >}}
+
+You can also enable or disable components and modify resource settings.
+For example, to enable the `Grafana` component and increase pilot memory requests:
+
+{{< text bash >}}
+$ kubectl apply -f - <<EOF
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  namespace: istio-system
+  name: example-istiocontrolplane
+spec:
+  profile: default
+  components:
+    pilot:
+      k8s:
+        resources:
+          requests:
+            memory: 3072Mi
+  addonComponents:
+    grafana:
+      enabled: true
+EOF
+{{< /text >}}
+
+You can observe the changes that the controller makes in the cluster in response to `IstioOperator` CR updates by
+checking the operator controller logs:
+
+{{< text bash >}}
+$ kubectl logs -f -n istio-operator $(kubectl get pods -n istio-operator -lname=istio-operator -o jsonpath='{.items[0].metadata.name}')
+{{< /text >}}
+
+Refer to the [`IstioOperator` API](https://github.com/istio/api/blob/release-1.5/operator/v1alpha1/operator.proto/)
+for the complete set of configuration settings.
 
 ## Uninstall
 
-Delete the Istio Operator and Istio deployment:
+Delete the Istio deployment:
 
 {{< text bash >}}
-$ kubectl -n istio-operator get IstioControlPlane example-istiocontrolplane -o=json | jq '.metadata.finalizers = null' | kubectl apply -f -
-$ kubectl delete ns istio-operator --grace-period=0 --force
-$ kubectl delete ns istio-system --grace-period=0 --force
+$ kubectl delete istiooperators.install.istio.io -n istio-system example-istiocontrolplane
 {{< /text >}}
 
-Please be aware that Istio's CRDs are leaked into the Kubernetes environment. This is intentional as to not
-cause data loss of the user's Istio configuration.
+Wait until Istio is uninstalled - this may take some time.
+Delete the Istio operator:
+
+{{< text bash >}}
+$ istioctl operator remove
+{{< /text >}}
+
+Or:
+
+{{< text bash >}}
+$ kubectl delete ns istio-operator --grace-period=0 --force
+{{< /text >}}
+
+Note that deleting the operator before Istio is fully removed may result in leftover Istio resources.
+To clean up anything not removed by the operator:
+
+{{< text bash >}}
+$ istioctl manifest generate | kubectl delete -f -
+$ kubectl delete ns istio-system --grace-period=0 --force
+ {{< /text >}}

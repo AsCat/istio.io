@@ -9,7 +9,14 @@ aliases:
 ---
 
 This example deploys a sample application composed of four separate microservices used
-to demonstrate various Istio features. The application displays information about a
+to demonstrate various Istio features.
+
+{{< tip >}}
+If you installed Istio using the [Getting Started](/docs/setup/getting-started/)
+instructions, you already have Bookinfo installed and you can skip these steps.
+{{< /tip >}}
+
+The application displays information about a
 book, similar to a single catalog entry of an online book store. Displayed
 on the page is a description of the book, book details (ISBN, number of
 pages, and so on), and a few book reviews.
@@ -69,6 +76,10 @@ If you use GKE, please ensure your cluster has at least 4 standard GKE nodes. If
     {{< text bash >}}
     $ kubectl label namespace default istio-injection=enabled
     {{< /text >}}
+
+    {{< warning >}}
+    If you use OpenShift, make sure to give appropriate permissions to service accounts on the namespace as described in [OpenShift setup page](/docs/setup/platform-setup/openshift/#privileged-security-context-constraints-for-application-sidecars).
+    {{< /warning >}}
 
 1.  Deploy your application using the `kubectl` command:
 
@@ -180,6 +191,11 @@ versions, called *subsets*, in [destination rules](/docs/concepts/traffic-manage
 Run the following command to create default destination rules for the Bookinfo services:
 
 * If you did **not** enable mutual TLS, execute this command:
+
+    {{< tip >}}
+    Choose this option if you are new to Istio and are using the `demo`
+    [configuration profile](/docs/setup/additional-setup/config-profiles/).
+    {{< /tip >}}
 
     {{< text bash >}}
     $ kubectl apply -f @samples/bookinfo/networking/destination-rule-all.yaml@

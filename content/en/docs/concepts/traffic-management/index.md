@@ -29,10 +29,10 @@ changes to your services.
 
 If you’re interested in the details of how the features described in this guide
 work, you can find out more about Istio’s traffic management implementation in the
-[architecture overview](/docs/concepts/architecture/). The rest of
+[architecture overview](/docs/ops/deployment/architecture/). The rest of
 this guide introduces Istio’s traffic management features.
 
-## Introducing Istio Traffic Management
+## Introducing Istio traffic management
 
 In order to direct traffic within your mesh, Istio needs to know where all your
 endpoints are, and which services they belong to. To populate its own
@@ -303,14 +303,6 @@ spec:
     route:
     - destination:
         host: ratings
-...
-
-  http:
-  - match:
-      sourceLabels:
-        app: reviews
-    route:
-...
 {{< /text >}}
 
 For some match conditions, you can also choose to select them using the exact
@@ -461,9 +453,9 @@ configure a purely internal proxy.
 
 Istio provides some preconfigured gateway proxy deployments
 (`istio-ingressgateway` and `istio-egressgateway`) that you can use - both are
-deployed if you use our [demo installation](/docs/setup/install/kubernetes/),
+deployed if you use our [demo installation](/docs/setup/getting-started/),
 while just the ingress gateway is deployed with our
-[default or sds profiles.](/docs/setup/additional-setup/config-profiles/) You
+[default profile.](/docs/setup/additional-setup/config-profiles/) You
 can apply your own gateway configurations to these deployments or deploy and
 configure your own gateway proxies.
 
@@ -509,7 +501,7 @@ spec:
   hosts:
   - ext-host.example.com
   gateways:
-    - ext-host-gwy
+  - ext-host-gwy
 {{< /text >}}
 
 You can then configure the virtual service with routing rules for the external
@@ -528,8 +520,8 @@ traffic for services running outside of the mesh, including the following tasks:
     consumed from the web, or traffic to services in legacy infrastructure.
 -   Define [retry](#retries), [timeout](#timeouts), and
     [fault injection](#fault-injection) policies for external destinations.
--   Add a service running in a Virtual Machine (VM) to the mesh to
-    [expand your mesh](/docs/examples/mesh-expansion/single-network/#running-services-on-a-mesh-expansion-machine).
+-   Run a mesh service in a Virtual Machine (VM) by
+    [adding VMs to your mesh](/docs/examples/virtual-machines/).
 -   Logically add services from a different cluster to the mesh to configure a
     [multicluster Istio mesh](/docs/setup/install/multicluster/gateways/#configure-the-example-services)
     on Kubernetes.

@@ -1,6 +1,6 @@
 ---
 title: Getting Envoy's Access Logs
-description: This task shows you how to configure Envoy proxies to print access log to their standard output.
+description: This task shows you how to configure Envoy proxies to print access logs to their standard output.
 weight: 10
 keywords: [telemetry]
 aliases:
@@ -21,9 +21,25 @@ The standard output of Envoy's containers can then be printed by the `kubectl lo
 
 Edit the `istio` configuration map:
 
+{{< tip >}}
+In the example below, replace `demo` with the name of the profile you used when you installed Istio.
+{{< /tip >}}
+
 {{< text bash >}}
-$ helm template install/kubernetes/helm/istio --namespace=istio-system -x templates/configmap.yaml --set global.proxy.accessLogFile="/dev/stdout" | kubectl replace -f -
-configmap "istio" replaced
+$ istioctl manifest apply --set profile=demo --set values.global.proxy.accessLogFile="/dev/stdout"
+- Applying manifest for component Base...
+✔ Finished applying manifest for component Base.
+- Applying manifest for component Pilot...
+✔ Finished applying manifest for component Pilot.
+- Applying manifest for component EgressGateways...
+- Applying manifest for component IngressGateways...
+- Applying manifest for component AddonComponents...
+✔ Finished applying manifest for component EgressGateways.
+✔ Finished applying manifest for component IngressGateways.
+✔ Finished applying manifest for component AddonComponents.
+
+
+✔ Installation complete
 {{< /text >}}
 
 You can also choose between JSON and text by setting `accessLogEncoding` to `JSON` or `TEXT`.
@@ -32,12 +48,12 @@ You may also want to customize the
 [format](https://www.envoyproxy.io/docs/envoy/latest/configuration/observability/access_log#format-rules) of the access log by editing `accessLogFormat`.
 
 {{< tip >}}
-All three of these parameters may also be configured via [helm values](/docs/reference/config/installation-options/):
+All three of these parameters may also be configured via [install options](/docs/reference/config/installation-options/):
 {{< /tip >}}
 
-* `global.proxy.accessLogFile`
-* `global.proxy.accessLogEncoding`
-* `global.proxy.accessLogFormat`
+* `values.global.proxy.accessLogFile`
+* `values.global.proxy.accessLogEncoding`
+* `values.global.proxy.accessLogFormat`
 
 ## Test the access log
 
@@ -85,7 +101,7 @@ Note that the messages corresponding to the request appear in logs of the Istio 
 
 ## Cleanup
 
-Shutdown the [sleep]({{<github_tree>}}/samples/sleep) and [httpbin]({{<github_tree>}}/samples/httpbin) services:
+Shutdown the [sleep]({{< github_tree >}}/samples/sleep) and [httpbin]({{< github_tree >}}/samples/httpbin) services:
 
 {{< text bash >}}
 $ kubectl delete -f @samples/sleep/sleep.yaml@
@@ -96,7 +112,23 @@ $ kubectl delete -f @samples/httpbin/httpbin.yaml@
 
 Edit the `istio` configuration map and set `accessLogFile` to `""`.
 
+{{< tip >}}
+In the example below, replace `demo` with the name of the profile you used when you installed Istio.
+{{< /tip >}}
+
 {{< text bash >}}
-$ helm template install/kubernetes/helm/istio --namespace=istio-system -x templates/configmap.yaml | kubectl replace -f -
-configmap "istio" replaced
+$ istioctl manifest apply --set profile=demo
+- Applying manifest for component Base...
+✔ Finished applying manifest for component Base.
+- Applying manifest for component Pilot...
+✔ Finished applying manifest for component Pilot.
+- Applying manifest for component EgressGateways...
+- Applying manifest for component IngressGateways...
+- Applying manifest for component AddonComponents...
+✔ Finished applying manifest for component EgressGateways.
+✔ Finished applying manifest for component IngressGateways.
+✔ Finished applying manifest for component AddonComponents.
+
+
+✔ Installation complete
 {{< /text >}}
